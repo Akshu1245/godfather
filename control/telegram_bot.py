@@ -1,37 +1,16 @@
-import httpx
-import os
-import time
-import openai
-
-BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
-
-openai.api_key = OPENAI_KEY
-
-def send_message(chat_id, text):
-    httpx.post(f"{BASE_URL}/sendMessage", json={"chat_id": chat_id, "text": text})
-
-def get_updates(offset=None):
-    url = f"{BASE_URL}/getUpdates"
-    if offset:
-        url += f"?offset={offset}"
-    try:
-        response = httpx.get(url).json()
-        return response["result"]
-    except Exception:
-        return []
-
 def run_bot():
     last_update_id = None
     print("Bot started...")
     while True:
         updates = get_updates(last_update_id)
+        if updates:
+            print("Got updates:", updates)  # 👈 this will log all incoming messages
         for update in updates:
             last_update_id = update["update_id"] + 1
             if "message" in update:
                 chat_id = update["message"]["chat"]["id"]
                 text = update["message"].get("text", "")
+                print(f"User said: {text}")  # 👈 log user input
                 if text.startswith("/start"):
                     send_message(chat_id, "Godfather ready. Use /run <idea>")
                 elif text.startswith("/run"):
