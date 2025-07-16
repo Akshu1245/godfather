@@ -1,29 +1,38 @@
+from telegram.ext import Updater, CommandHandler
+import openai
 import os
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from godfather import handle_instruction
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def start(update, context):
-    update.message.reply_text("I am the Godfather. What do you want to automate?")
+    update.message.reply_text("I am your Godfather. Send /run followed by an idea.")
 
-def run(update, context):
+def run_command(update, context):
     prompt = ' '.join(context.args)
-    response = handle_instruction(prompt)
-    update.message.reply_text(response)
+    if not prompt:
+        update.message.reply_text("Please provide a task, like:\n/run write a YouTube script about AI")
+        return
 
-def fallback(update, context):
-    update.message.reply_text("Use /run followed by what you want.\nExample: /run grow my GitHub")
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        answer = response.choices[0].message.content.strip()
+        update.message.reply_text(answer[:4000])  # Telegram limit
+    except Exception as e:
+        update.message.reply_text(f"Error: {str(e)}")
 
 def main():
-    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
+    token = os.getenv("TELEGRAM_TOKEN")
+    updater = Updater(token, use_context=True)
     dp = updater.dispatcher
+
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("run", run))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, fallback))
+    dp.add_handler(CommandHandler("run", run_command))
+
     updater.start_polling()
     updater.idle()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
- 
