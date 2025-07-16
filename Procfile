@@ -1,2 +1,1 @@
-worker: python control/telegram_bot.py
- 
+worker: python godfather.py

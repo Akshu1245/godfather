@@ -1,38 +1,51 @@
-from telegram.ext import Updater, CommandHandler
-import openai
+import httpx
 import os
+import time
+import openai
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-def start(update, context):
-    update.message.reply_text("I am your Godfather. Send /run followed by an idea.")
+openai.api_key = OPENAI_KEY
 
-def run_command(update, context):
-    prompt = ' '.join(context.args)
-    if not prompt:
-        update.message.reply_text("Please provide a task, like:\n/run write a YouTube script about AI")
-        return
+def send_message(chat_id, text):
+    httpx.post(f"{BASE_URL}/sendMessage", json={"chat_id": chat_id, "text": text})
 
+def get_updates(offset=None):
+    url = f"{BASE_URL}/getUpdates"
+    if offset:
+        url += f"?offset={offset}"
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        answer = response.choices[0].message.content.strip()
-        update.message.reply_text(answer[:4000])  # Telegram limit
-    except Exception as e:
-        update.message.reply_text(f"Error: {str(e)}")
+        response = httpx.get(url).json()
+        return response["result"]
+    except Exception:
+        return []
 
-def main():
-    token = os.getenv("TELEGRAM_TOKEN")
-    updater = Updater(token, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("run", run_command))
-
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
+def run_bot():
+    last_update_id = None
+    print("Bot started...")
+    while True:
+        updates = get_updates(last_update_id)
+        for update in updates:
+            last_update_id = update["update_id"] + 1
+            if "message" in update:
+                chat_id = update["message"]["chat"]["id"]
+                text = update["message"].get("text", "")
+                if text.startswith("/start"):
+                    send_message(chat_id, "Godfather ready. Use /run <idea>")
+                elif text.startswith("/run"):
+                    prompt = text.replace("/run", "").strip()
+                    if not prompt:
+                        send_message(chat_id, "Send like this:\n/run Write YouTube script for AI tool")
+                    else:
+                        try:
+                            res = openai.ChatCompletion.create(
+                                model="gpt-3.5-turbo",
+                                messages=[{"role": "user", "content": prompt}]
+                            )
+                            msg = res.choices[0].message.content.strip()
+                            send_message(chat_id, msg[:4000])
+                        except Exception as e:
+                            send_message(chat_id, f"OpenAI Error: {str(e)}")
+        time.sleep(2)

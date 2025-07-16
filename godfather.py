@@ -1,15 +1,14 @@
-import openai
-import os
+import schedule
+import time
+from control.telegram_bot import run_bot
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+def job():
+    print("Scheduled job running...")
 
-def handle_instruction(prompt):
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are the Godfather agent who helps automate any task given by the user."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response.choices[0].message['content']
- 
+schedule.every(10).minutes.do(job)
+
+if __name__ == "__main__":
+    run_bot()
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
