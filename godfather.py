@@ -14,7 +14,7 @@ def run_scheduler():
 
 if __name__ == "__main__":
     # Run the scheduler in a separate thread
-    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
     scheduler_thread.start()
 
     # Start the Telegram bot (this blocks the main thread)
